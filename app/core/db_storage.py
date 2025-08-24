@@ -103,7 +103,8 @@ class PostgreSQLStorage:
         """Get all questions"""
         db = self.get_db()
         try:
-            return db.query(DBQuestion).all()
+            questions = db.query(DBQuestion).options(joinedload(DBQuestion.options)).all()
+            return questions
         finally:
             db.close()
     
