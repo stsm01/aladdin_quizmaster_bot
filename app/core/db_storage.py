@@ -5,7 +5,7 @@ import uuid
 import random
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from .database import (
@@ -94,7 +94,8 @@ class PostgreSQLStorage:
         """Get question by ID"""
         db = self.get_db()
         try:
-            return db.query(DBQuestion).filter(DBQuestion.id == question_id).first()
+            question = db.query(DBQuestion).options(joinedload(DBQuestion.options)).filter(DBQuestion.id == question_id).first()
+            return question
         finally:
             db.close()
     
