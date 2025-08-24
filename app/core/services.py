@@ -1,21 +1,25 @@
 """Business logic services"""
 
-from typing import List, Optional, Dict, Any
-from .storage import storage, User, Question, AnswerOption, QuizSession, UserAnswer
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .database import QuizSession
+from .db_storage import storage
 from .models import QuestionInput, SessionStartRequest, AnswerRequest
 import uuid
+import json
 from datetime import datetime
 
 class UserService:
     """Service for user management"""
     
     @staticmethod
-    def create_or_update_user(telegram_id: int, first_name: str, last_name: str) -> User:
+    def create_or_update_user(telegram_id: int, first_name: str, last_name: str):
         """Create or update user"""
         return storage.create_or_update_user(telegram_id, first_name, last_name)
     
     @staticmethod
-    def get_user(telegram_id: int) -> Optional[User]:
+    def get_user(telegram_id: int):
         """Get user by telegram ID"""
         return storage.get_user(telegram_id)
     
@@ -44,27 +48,8 @@ class QuestionService:
                         "error": f"Question {q_data.id} must have exactly one correct answer"
                     }
                 
-                # Create answer options
-                options = []
-                for ans_data in q_data.answers:
-                    option = AnswerOption(
-                        id=ans_data.id,
-                        question_id=q_data.id,
-                        text=ans_data.text,
-                        is_correct=ans_data.is_correct,
-                        comment=ans_data.comment
-                    )
-                    options.append(option)
-                
-                # Create question
-                question = Question(
-                    id=q_data.id,
-                    title=q_data.title,
-                    text=q_data.text,
-                    options=options
-                )
-                
-                storage.add_question(question)
+                # Add question to storage
+                storage.add_question(q_data)
                 imported_count += 1
             
             return {
@@ -79,17 +64,17 @@ class QuestionService:
             }
     
     @staticmethod
-    def get_all_questions() -> List[Question]:
+    def get_all_questions():
         """Get all questions"""
         return storage.get_all_questions()
     
     @staticmethod
-    def get_question(question_id: str) -> Optional[Question]:
+    def get_question(question_id: str):
         """Get question by ID"""
         return storage.get_question(question_id)
     
     @staticmethod
-    def get_question_options(question_id: str) -> List[AnswerOption]:
+    def get_question_options(question_id: str):
         """Get options for a question"""
         return storage.get_question_options(question_id)
 
@@ -115,7 +100,7 @@ class QuizService:
                 "error": "No questions available. Please import questions first."
             }
         
-        # Create session
+        # Create session  
         session = storage.create_quiz_session(request.telegram_id, request.shuffle)
         
         return {
@@ -132,10 +117,11 @@ class QuizService:
             return None
         
         # Check if session is finished
-        if session.current_question_index >= len(session.question_order):
+        question_order = json.loads(session.question_order)
+        if session.current_question_index >= len(question_order):
             return None
         
-        question_id = session.question_order[session.current_question_index]
+        question_id = question_order[session.current_question_index]
         question = storage.get_question(question_id)
         if not question:
             return None
@@ -165,29 +151,27 @@ class QuizService:
             return {"success": False, "error": "Session not found"}
         
         # Get current question
-        if session.current_question_index >= len(session.question_order):
+        question_order = json.loads(session.question_order)
+        if session.current_question_index >= len(question_order):
             return {"success": False, "error": "No more questions in this session"}
         
-        question_id = session.question_order[session.current_question_index]
+        question_id = question_order[session.current_question_index]
         option = storage.get_answer_option(request.option_id)
         
         if not option or option.question_id != question_id:
             return {"success": False, "error": "Invalid answer option"}
         
         # Record answer
-        answer = UserAnswer(
+        storage.add_user_answer(
             session_id=session.id,
-            user_id=session.user_id,
+            user_telegram_id=session.user_telegram_id,
             question_id=question_id,
             chosen_option_id=request.option_id,
             is_correct=option.is_correct
         )
         
-        storage.add_user_answer(answer)
-        
         # Move to next question
-        session.current_question_index += 1
-        storage.update_quiz_session(session)
+        storage.update_quiz_session(session_id, current_question_index=session.current_question_index + 1)
         
         return {
             "success": True,
@@ -220,6 +204,6 @@ class QuizService:
         }
     
     @staticmethod
-    def get_session(session_id: str) -> Optional[QuizSession]:
+    def get_session(session_id: str):
         """Get session by ID"""
         return storage.get_quiz_session(session_id)
