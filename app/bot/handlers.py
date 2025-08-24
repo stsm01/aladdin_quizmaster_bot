@@ -118,7 +118,10 @@ async def process_name(message: Message, state: FSMContext):
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz(callback: CallbackQuery, state: FSMContext):
     """Start a new quiz"""
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
     
     # Start session
     result = await api_request("POST", "/public/sessions/start", {
@@ -143,13 +146,20 @@ async def start_quiz(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("answer:"))
 async def process_answer(callback: CallbackQuery, state: FSMContext):
     """Process quiz answer"""
-    await callback.answer()
+    # Answer callback immediately to avoid timeout
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
     
     data = await state.get_data()
     session_id = data.get("session_id")
     
     if not session_id:
-        await callback.message.edit_text(TEXTS["session_error"])
+        try:
+            await callback.message.edit_text(TEXTS["session_error"])
+        except Exception as e:
+            logger.error(f"Failed to edit message: {e}")
         return
     
     # Extract option ID
@@ -199,7 +209,10 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Go to next question"""
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
     
     data = await state.get_data()
     session_id = data.get("session_id")
@@ -250,7 +263,10 @@ async def send_next_question(message: Message, session_id: str, state: FSMContex
 @router.callback_query(F.data == "view_stats")
 async def view_stats(callback: CallbackQuery):
     """View user statistics"""
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
     
     user_stats = await api_request("GET", f"/public/users/{callback.from_user.id}/stats")
     
@@ -274,7 +290,10 @@ async def view_stats(callback: CallbackQuery):
 @router.callback_query(F.data == "main_menu")
 async def main_menu(callback: CallbackQuery, state: FSMContext):
     """Return to main menu"""
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
     await state.clear()
     
     user_stats = await api_request("GET", f"/public/users/{callback.from_user.id}/stats")
