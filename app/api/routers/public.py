@@ -5,7 +5,8 @@ from typing import Optional
 
 from ...core.models import (
     SessionStartRequest, SessionStartResponse, QuestionWithOptions,
-    AnswerRequest, AnswerResponse, FinishResponse, UserStats
+    AnswerRequest, AnswerResponse, FinishResponse, UserStats,
+    UserRegisterRequest
 )
 from ...core.services import UserService, QuizService
 
@@ -25,9 +26,13 @@ async def get_user_stats(telegram_id: int):
     return UserStats(**stats)
 
 @router.post("/users/register")
-async def register_user(telegram_id: int, first_name: str, last_name: str):
+async def register_user(request: UserRegisterRequest):
     """Register or update user"""
-    user = UserService.create_or_update_user(telegram_id, first_name, last_name)
+    user = UserService.create_or_update_user(
+        request.telegram_id, 
+        request.first_name, 
+        request.last_name
+    )
     
     return {
         "success": True,

@@ -64,6 +64,12 @@ class FinishResponse(BaseModel):
     session_id: str
 
 # User models
+class UserRegisterRequest(BaseModel):
+    """Request to register a new user"""
+    telegram_id: int
+    first_name: str
+    last_name: str
+
 class UserStats(BaseModel):
     """User statistics response"""
     telegram_id: int
