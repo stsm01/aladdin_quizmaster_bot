@@ -1,2 +1,50 @@
+modules = ["python-3.11"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["libxcrypt"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Install Dependencies"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Quiz Bot App"
+
+[[workflows.workflow]]
+name = "Install Dependencies"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install aiogram==3.* fastapi==0.111.* uvicorn[standard]==0.30.* pydantic==2.* SQLAlchemy==2.* asyncpg==0.29.* alembic==1.* python-dotenv==1.* structlog==24.* aiohttp"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Quiz Bot App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
