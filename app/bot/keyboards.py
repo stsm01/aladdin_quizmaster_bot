@@ -20,9 +20,9 @@ def get_quiz_keyboard(options: List[Dict[str, str]]) -> InlineKeyboardMarkup:
     """Keyboard for quiz questions"""
     buttons = []
     
-    # Add option buttons (max 2 per row for better readability)
+    # Add option buttons with just letters (A, B, C, etc.)
     for i, option in enumerate(options):
-        button_text = f"{chr(65 + i)}. {option['text'][:50]}{'...' if len(option['text']) > 50 else ''}"
+        button_text = f"{chr(65 + i)}"  # Just the letter: A, B, C, etc.
         buttons.append([InlineKeyboardButton(
             text=button_text,
             callback_data=f"answer:{option['id']}"

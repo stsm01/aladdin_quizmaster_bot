@@ -232,10 +232,15 @@ async def send_next_question(message: Message, session_id: str, state: FSMContex
             await message.edit_text(TEXTS["finish_error"])
         return
     
-    # Format question
+    # Format question with answer options
     question_text = f"❓ <b>{question_data['title']}</b>\n\n"
     question_text += f"{question_data['text']}\n\n"
-    question_text += f"📊 Вопрос {question_data['current']} из {question_data['total']}"
+    
+    # Add answer options to the question text
+    for i, option in enumerate(question_data['options']):
+        question_text += f"<b>{chr(65 + i)}.</b> {option['text']}\n"
+    
+    question_text += f"\n📊 Вопрос {question_data['current']} из {question_data['total']}"
     
     # Create keyboard with answer options
     keyboard = get_quiz_keyboard(question_data['options'])
