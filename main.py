@@ -29,13 +29,23 @@ def run_bot():
     asyncio.run(bot_main())
 
 if __name__ == "__main__":
-    print("🚀 Starting Quiz Bot API...")
+    print("🚀 Starting Quiz Bot Application...")
     print(f"📡 API will be available at http://{settings.api_host}:{settings.api_port}")
-    print("🌐 Running in API-only mode (Bot disabled)")
+    print("🤖 Telegram bot is starting...")
+    
+    # Start API server in a separate process
+    api_process = Process(target=run_api)
+    api_process.start()
+    
+    # Wait a bit for API to start
+    time.sleep(2)
     
     try:
-        # Run only API server
-        run_api()
+        # Run bot in main process
+        run_bot()
     except KeyboardInterrupt:
         print("\n🛑 Shutting down...")
+    finally:
+        api_process.terminate()
+        api_process.join()
         print("✅ Application stopped")
