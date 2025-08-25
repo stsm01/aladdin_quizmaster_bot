@@ -4,6 +4,20 @@ from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
+# Test models
+class TestRequest(BaseModel):
+    """Request to create a new test"""
+    name: str
+    description: str = ""
+
+class TestResponse(BaseModel):
+    """Response model for test"""
+    id: str
+    name: str
+    description: str
+    questions_count: int
+    created_at: str
+
 # Question models
 class AnswerOptionInput(BaseModel):
     """Input model for answer option"""
@@ -30,6 +44,7 @@ class QuestionResponse(BaseModel):
 class SessionStartRequest(BaseModel):
     """Request to start a new quiz session"""
     telegram_id: int
+    test_id: str
     shuffle: bool = True
 
 class SessionStartResponse(BaseModel):

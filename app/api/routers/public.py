@@ -1,16 +1,32 @@
 """Public API routes for quiz functionality"""
 
 from fastapi import APIRouter, HTTPException, status
-from typing import Optional
+from typing import Optional, List
 
 from ...core.models import (
     SessionStartRequest, SessionStartResponse, QuestionWithOptions,
     AnswerRequest, AnswerResponse, FinishResponse, UserStats,
-    UserRegisterRequest
+    UserRegisterRequest, TestResponse
 )
-from ...core.services import UserService, QuizService
+from ...core.services import UserService, QuizService, TestService
 
 router = APIRouter()
+
+@router.get("/tests", response_model=List[TestResponse])
+async def get_available_tests():
+    """Get all available tests"""
+    tests = TestService.get_all_tests()
+    result = []
+    for test in tests:
+        questions_count = len(TestService.get_questions_by_test(test.id))
+        result.append(TestResponse(
+            id=test.id,
+            name=test.name,
+            description=test.description,
+            questions_count=questions_count,
+            created_at=test.created_at.isoformat()
+        ))
+    return result
 
 @router.get("/users/{telegram_id}/stats", response_model=UserStats)
 async def get_user_stats(telegram_id: int):

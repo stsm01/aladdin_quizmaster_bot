@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .database import QuizSession
 from .db_storage import storage
 from .models import QuestionInput, SessionStartRequest, AnswerRequest
+from .storage import Test
 import uuid
 import json
 from datetime import datetime
@@ -32,11 +33,32 @@ class QuestionService:
     """Service for question management"""
     
     @staticmethod
-    def import_questions(questions_data: List[QuestionInput]) -> Dict[str, Any]:
+    def import_questions(questions_data: List[QuestionInput], test_id: str = None) -> Dict[str, Any]:
         """Import questions from JSON data"""
         try:
-            # Clear existing questions
-            storage.clear_questions()
+            # If no test_id provided, create a default test or use existing logic
+            if not test_id:
+                # Legacy mode - for backward compatibility
+                storage.clear_questions()
+                
+                # Check if default test exists, create if not
+                default_test = storage.get_test("default")
+                if not default_test:
+                    default_test = Test(
+                        id="default",
+                        name="Imported Questions",
+                        description="Questions imported without specific test assignment"
+                    )
+                    storage.create_test(default_test)
+                test_id = "default"
+            
+            # Check if test exists
+            test = storage.get_test(test_id)
+            if not test:
+                return {
+                    "success": False,
+                    "error": f"Test with ID {test_id} not found"
+                }
             
             imported_count = 0
             for q_data in questions_data:
@@ -48,13 +70,13 @@ class QuestionService:
                         "error": f"Question {q_data.id} must have exactly one correct answer"
                     }
                 
-                # Add question to storage
-                storage.add_question(q_data)
+                # Add question to storage with test_id
+                storage.add_question(q_data, test_id)
                 imported_count += 1
             
             return {
                 "success": True,
-                "message": f"Successfully imported {imported_count} questions"
+                "message": f"Successfully imported {imported_count} questions to test '{test.name}'"
             }
             
         except Exception as e:
@@ -78,6 +100,30 @@ class QuestionService:
         """Get options for a question"""
         return storage.get_question_options(question_id)
 
+class TestService:
+    """Service for test management"""
+    
+    @staticmethod
+    def create_test(name: str, description: str = ""):
+        """Create a new test"""
+        test_id = str(uuid.uuid4())
+        return storage.create_test(test_id, name, description)
+    
+    @staticmethod
+    def get_test(test_id: str):
+        """Get test by ID"""
+        return storage.get_test(test_id)
+    
+    @staticmethod
+    def get_all_tests():
+        """Get all tests"""
+        return storage.get_all_tests()
+    
+    @staticmethod
+    def get_questions_by_test(test_id: str):
+        """Get all questions for a specific test"""
+        return storage.get_questions_by_test(test_id)
+
 class QuizService:
     """Service for quiz session management"""
     
@@ -92,16 +138,24 @@ class QuizService:
                 "error": "User not found. Please register first."
             }
         
-        # Check if questions exist
-        questions = storage.get_all_questions()
+        # Check if test exists
+        test = storage.get_test(request.test_id)
+        if not test:
+            return {
+                "success": False,
+                "error": f"Test with ID {request.test_id} not found."
+            }
+        
+        # Check if questions exist for this test
+        questions = storage.get_questions_by_test(request.test_id)
         if not questions:
             return {
                 "success": False,
-                "error": "No questions available. Please import questions first."
+                "error": f"No questions available for test '{test.name}'. Please import questions first."
             }
         
         # Create session  
-        session = storage.create_quiz_session(request.telegram_id, request.shuffle)
+        session = storage.create_quiz_session(request.telegram_id, request.test_id, request.shuffle)
         
         return {
             "success": True,

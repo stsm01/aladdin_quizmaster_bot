@@ -8,6 +8,13 @@ import json
 import random
 
 @dataclass
+class Test:
+    id: str
+    name: str
+    description: str = ""
+    created_at: datetime = field(default_factory=datetime.now)
+
+@dataclass
 class User:
     telegram_id: int
     first_name: str
@@ -21,6 +28,7 @@ class User:
 @dataclass
 class Question:
     id: str
+    test_id: str
     title: str
     text: str
     options: List['AnswerOption'] = field(default_factory=list)
@@ -37,6 +45,7 @@ class AnswerOption:
 class QuizSession:
     id: str
     user_id: int
+    test_id: str
     started_at: datetime
     finished_at: Optional[datetime] = None
     question_order: List[str] = field(default_factory=list)
@@ -59,6 +68,7 @@ class InMemoryStorage:
     
     def __init__(self):
         self.users: Dict[int, User] = {}  # telegram_id -> User
+        self.tests: Dict[str, Test] = {}  # test_id -> Test  
         self.questions: Dict[str, Question] = {}  # question_id -> Question
         self.answer_options: Dict[str, AnswerOption] = {}  # option_id -> AnswerOption
         self.quiz_sessions: Dict[str, QuizSession] = {}  # session_id -> QuizSession
@@ -84,17 +94,60 @@ class InMemoryStorage:
         """Get user by telegram_id"""
         return self.users.get(telegram_id)
     
+    # Test methods
+    def create_test(self, test: Test) -> Test:
+        """Create a new test"""
+        self.tests[test.id] = test
+        return test
+    
+    def get_test(self, test_id: str) -> Optional[Test]:
+        """Get test by ID"""
+        return self.tests.get(test_id)
+    
+    def get_all_tests(self) -> List[Test]:
+        """Get all tests"""
+        return list(self.tests.values())
+    
     # Question methods
     def clear_questions(self):
         """Clear all questions and answer options"""
         self.questions.clear()
         self.answer_options.clear()
     
-    def add_question(self, question: Question):
+    def add_question(self, question_data, test_id: str = None):
         """Add question to storage"""
-        self.questions[question.id] = question
-        for option in question.options:
-            self.answer_options[option.id] = option
+        # Convert QuestionInput to Question if needed
+        if hasattr(question_data, 'id'):  # It's a QuestionInput
+            # Create AnswerOption objects
+            options = []
+            for opt_data in question_data.answers:
+                option = AnswerOption(
+                    id=opt_data.id,
+                    question_id=question_data.id,
+                    text=opt_data.text,
+                    is_correct=opt_data.is_correct,
+                    comment=opt_data.comment
+                )
+                options.append(option)
+                self.answer_options[option.id] = option
+            
+            # Create Question object
+            question = Question(
+                id=question_data.id,
+                test_id=test_id or "default",
+                title=question_data.title,
+                text=question_data.text,
+                options=options
+            )
+            self.questions[question.id] = question
+        else:  # It's already a Question object
+            self.questions[question_data.id] = question_data
+            for option in question_data.options:
+                self.answer_options[option.id] = option
+    
+    def get_questions_by_test(self, test_id: str) -> List[Question]:
+        """Get all questions for a specific test"""
+        return [q for q in self.questions.values() if q.test_id == test_id]
     
     def get_question(self, question_id: str) -> Optional[Question]:
         """Get question by ID"""
@@ -113,10 +166,11 @@ class InMemoryStorage:
         return self.answer_options.get(option_id)
     
     # Session methods
-    def create_quiz_session(self, user_id: int, shuffle: bool = True) -> QuizSession:
+    def create_quiz_session(self, user_id: int, test_id: str, shuffle: bool = True) -> QuizSession:
         """Create new quiz session"""
         session_id = str(uuid.uuid4())
-        question_ids = list(self.questions.keys())
+        test_questions = self.get_questions_by_test(test_id)
+        question_ids = [q.id for q in test_questions]
         
         if shuffle:
             random.shuffle(question_ids)
@@ -124,6 +178,7 @@ class InMemoryStorage:
         session = QuizSession(
             id=session_id,
             user_id=user_id,
+            test_id=test_id,
             started_at=datetime.now(),
             question_order=question_ids,
             total_count=len(question_ids)
@@ -198,6 +253,25 @@ class InMemoryStorage:
             "last_score_percent": round(last_score, 1),
             "best_score_percent": round(best_score, 1)
         }
+    
+    # Test methods
+    def create_test(self, test_id: str, name: str, description: str = "") -> Test:
+        """Create a new test"""
+        test = Test(
+            id=test_id,
+            name=name,
+            description=description
+        )
+        self.tests[test_id] = test
+        return test
+    
+    def get_test(self, test_id: str) -> Optional[Test]:
+        """Get test by ID"""
+        return self.tests.get(test_id)
+    
+    def get_all_tests(self) -> List[Test]:
+        """Get all tests"""
+        return list(self.tests.values())
 
 # Global storage instance
 storage = InMemoryStorage()

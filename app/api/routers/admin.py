@@ -2,17 +2,75 @@
 
 from fastapi import APIRouter, HTTPException, status
 from typing import List
-from ...core.models import QuestionInput, SuccessResponse, ErrorResponse
-from ...core.services import QuestionService
+from ...core.models import QuestionInput, TestRequest, TestResponse, SuccessResponse, ErrorResponse
+from ...core.services import QuestionService, TestService
 
 router = APIRouter()
+
+# Test endpoints
+@router.post("/tests", response_model=TestResponse)
+async def create_test(request: TestRequest):
+    """Create a new test"""
+    test = TestService.create_test(request.name, request.description)
+    return TestResponse(
+        id=test.id,
+        name=test.name,
+        description=test.description,
+        questions_count=0,
+        created_at=test.created_at.isoformat()
+    )
+
+@router.get("/tests", response_model=List[TestResponse])
+async def get_all_tests():
+    """Get all tests"""
+    tests = TestService.get_all_tests()
+    result = []
+    for test in tests:
+        questions_count = len(TestService.get_questions_by_test(test.id))
+        result.append(TestResponse(
+            id=test.id,
+            name=test.name,
+            description=test.description,
+            questions_count=questions_count,
+            created_at=test.created_at.isoformat()
+        ))
+    return result
+
+@router.post("/tests/{test_id}/questions/import", response_model=SuccessResponse)
+async def import_questions_to_test(
+    test_id: str,
+    questions: List[QuestionInput]
+):
+    """
+    Import questions to a specific test
+    
+    Each question must have exactly one correct answer.
+    """
+    if not questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No questions provided"
+        )
+    
+    result = QuestionService.import_questions(questions, test_id)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+    
+    return SuccessResponse(
+        success=True,
+        message=result["message"]
+    )
 
 @router.post("/questions/import", response_model=SuccessResponse)
 async def import_questions(
     questions: List[QuestionInput]
 ):
     """
-    Import questions from JSON data
+    Import questions from JSON data (legacy endpoint)
     
     Each question must have exactly one correct answer.
     """

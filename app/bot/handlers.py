@@ -12,7 +12,8 @@ from aiogram.fsm.context import FSMContext
 
 from .keyboards import (
     get_start_keyboard, get_quiz_keyboard, 
-    get_continue_keyboard, get_main_menu_keyboard
+    get_continue_keyboard, get_main_menu_keyboard,
+    get_test_selection_keyboard, get_back_to_menu_keyboard
 )
 from .texts import TEXTS
 from .states import QuizStates
@@ -128,22 +129,52 @@ async def process_name(message: Message, state: FSMContext):
     else:
         await message.answer(TEXTS["registration_error"])
 
-@router.callback_query(F.data == "start_quiz")
-async def start_quiz(callback: CallbackQuery, state: FSMContext):
-    """Start a new quiz"""
+@router.callback_query(F.data == "select_test")
+async def select_test(callback: CallbackQuery, state: FSMContext):
+    """Show available tests"""
     try:
         await callback.answer()
     except Exception as e:
         logger.error(f"Failed to answer callback: {e}")
     
-    # Start session
+    # Get available tests
+    tests = await api_request("GET", "/public/tests")
+    
+    if not tests:
+        await callback.message.edit_text(
+            "❌ Нет доступных тестов",
+            reply_markup=get_back_to_menu_keyboard()
+        )
+        return
+    
+    await callback.message.edit_text(
+        "📝 Выберите тест:",
+        reply_markup=get_test_selection_keyboard(tests)
+    )
+
+@router.callback_query(F.data.startswith("start_test:"))
+async def start_test(callback: CallbackQuery, state: FSMContext):
+    """Start a quiz with specific test"""
+    try:
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Failed to answer callback: {e}")
+    
+    # Extract test_id from callback data
+    test_id = callback.data.split(":", 1)[1]
+    
+    # Start session with test_id
     result = await api_request("POST", "/public/sessions/start", {
         "telegram_id": callback.from_user.id,
+        "test_id": test_id,
         "shuffle": True
     })
     
     if not result or not result.get("session_id"):
-        await callback.message.edit_text(TEXTS["quiz_start_error"])
+        await callback.message.edit_text(
+            "❌ Ошибка при запуске теста",
+            reply_markup=get_back_to_menu_keyboard()
+        )
         return
     
     session_id = result["session_id"]

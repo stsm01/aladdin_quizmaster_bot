@@ -18,6 +18,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Database Models
+class Test(Base):
+    __tablename__ = "tests"
+    
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    questions = relationship("Question", back_populates="test", cascade="all, delete-orphan")
+    sessions = relationship("QuizSession", back_populates="test")
+
 class User(Base):
     __tablename__ = "users"
     
@@ -39,11 +51,13 @@ class Question(Base):
     __tablename__ = "questions"
     
     id = Column(String, primary_key=True)
+    test_id = Column(String, ForeignKey("tests.id"), nullable=False)
     title = Column(String, nullable=False)
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
+    test = relationship("Test", back_populates="questions")
     options = relationship("AnswerOption", back_populates="question", cascade="all, delete-orphan")
 
 class AnswerOption(Base):
@@ -63,6 +77,7 @@ class QuizSession(Base):
     
     id = Column(String, primary_key=True)
     user_telegram_id = Column(Integer, ForeignKey("users.telegram_id"), nullable=False)
+    test_id = Column(String, ForeignKey("tests.id"), nullable=False)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)
     question_order = Column(Text, nullable=False)  # JSON string of question IDs
@@ -72,6 +87,7 @@ class QuizSession(Base):
     
     # Relationships
     user = relationship("User", back_populates="sessions")
+    test = relationship("Test", back_populates="sessions")
     answers = relationship("UserAnswer", back_populates="session")
 
 class UserAnswer(Base):

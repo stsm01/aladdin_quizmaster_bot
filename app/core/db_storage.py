@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from .database import (
-    get_db, User as DBUser, Question as DBQuestion, 
+    get_db, Test as DBTest, User as DBUser, Question as DBQuestion, 
     AnswerOption as DBAnswerOption, QuizSession as DBQuizSession, 
     UserAnswer as DBUserAnswer, SessionLocal
 )
@@ -52,6 +52,39 @@ class PostgreSQLStorage:
         finally:
             db.close()
     
+    # Test methods
+    def create_test(self, test_id: str, name: str, description: str = "") -> DBTest:
+        """Create a new test"""
+        db = self.get_db()
+        try:
+            test = DBTest(
+                id=test_id,
+                name=name,
+                description=description
+            )
+            db.add(test)
+            db.commit()
+            db.refresh(test)
+            return test
+        finally:
+            db.close()
+    
+    def get_test(self, test_id: str) -> Optional[DBTest]:
+        """Get test by ID"""
+        db = self.get_db()
+        try:
+            return db.query(DBTest).filter(DBTest.id == test_id).first()
+        finally:
+            db.close()
+    
+    def get_all_tests(self) -> List[DBTest]:
+        """Get all tests"""
+        db = self.get_db()
+        try:
+            return db.query(DBTest).all()
+        finally:
+            db.close()
+    
     # Question methods
     def clear_questions(self):
         """Clear all questions and answer options"""
@@ -63,13 +96,14 @@ class PostgreSQLStorage:
         finally:
             db.close()
     
-    def add_question(self, question_data: QuestionInput):
+    def add_question(self, question_data: QuestionInput, test_id: str):
         """Add question to storage"""
         db = self.get_db()
         try:
             # Create question
             question = DBQuestion(
                 id=question_data.id,
+                test_id=test_id,
                 title=question_data.title,
                 text=question_data.text
             )
@@ -108,6 +142,15 @@ class PostgreSQLStorage:
         finally:
             db.close()
     
+    def get_questions_by_test(self, test_id: str) -> List[DBQuestion]:
+        """Get all questions for a specific test"""
+        db = self.get_db()
+        try:
+            questions = db.query(DBQuestion).options(joinedload(DBQuestion.options)).filter(DBQuestion.test_id == test_id).all()
+            return questions
+        finally:
+            db.close()
+    
     def get_question_options(self, question_id: str) -> List[DBAnswerOption]:
         """Get all options for a question"""
         db = self.get_db()
@@ -125,12 +168,12 @@ class PostgreSQLStorage:
             db.close()
     
     # Session methods
-    def create_quiz_session(self, user_telegram_id: int, shuffle: bool = True) -> DBQuizSession:
+    def create_quiz_session(self, user_telegram_id: int, test_id: str, shuffle: bool = True) -> DBQuizSession:
         """Create new quiz session"""
         db = self.get_db()
         try:
-            # Get all question IDs
-            questions = db.query(DBQuestion).all()
+            # Get all question IDs for the specific test
+            questions = db.query(DBQuestion).filter(DBQuestion.test_id == test_id).all()
             question_ids = [q.id for q in questions]
             
             if shuffle:
@@ -139,6 +182,7 @@ class PostgreSQLStorage:
             session = DBQuizSession(
                 id=str(uuid.uuid4()),
                 user_telegram_id=user_telegram_id,
+                test_id=test_id,
                 question_order=json.dumps(question_ids),
                 total_count=len(question_ids)
             )
