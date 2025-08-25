@@ -12,6 +12,10 @@ import sys
 from contextlib import asynccontextmanager
 from typing import Optional
 
+# Настройка продовой базы данных
+PRODUCTION_DATABASE_URL = "postgresql://neondb_owner:npg_9BH3JEMRwQna@ep-bitter-lake-a69kivks.us-west-2.aws.neon.tech/neondb?sslmode=require"
+os.environ["DATABASE_URL"] = PRODUCTION_DATABASE_URL
+
 # Configure logging for production
 logging.basicConfig(
     level=logging.INFO,
@@ -72,7 +76,8 @@ def check_database_connection():
         
         with SessionLocal() as db:
             # Simple connectivity test
-            db.execute("SELECT 1")
+            from sqlalchemy import text
+            db.execute(text("SELECT 1"))
             logger.info("✅ Database connection successful")
             return True
     except Exception as e:
@@ -145,7 +150,8 @@ async def health_check():
         try:
             from app.core.database import SessionLocal
             with SessionLocal() as db:
-                db.execute("SELECT 1")
+                from sqlalchemy import text
+                db.execute(text("SELECT 1"))
                 db_status = "healthy"
         except Exception:
             db_status = "error"

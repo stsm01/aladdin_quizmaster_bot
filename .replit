@@ -26,6 +26,10 @@ args = "FastAPI Server"
 task = "workflow.run"
 args = "Telegram Bot"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Production Deploy"
+
 [[workflows.workflow]]
 name = "Install Dependencies"
 author = "agent"
@@ -56,6 +60,18 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python run_bot.py"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Production Deploy"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python production_deploy.py"
+waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "console"
