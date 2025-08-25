@@ -11,8 +11,24 @@ from typing import Optional, List, Dict, Any
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Engine configuration with SSL handling
+engine_kwargs = {
+    "pool_pre_ping": True,  # Verify connections before use
+    "pool_recycle": 300,    # Recycle connections every 5 minutes
+}
+
+# Add SSL configuration for production
+if DATABASE_URL and "postgresql" in DATABASE_URL:
+    engine_kwargs.update({
+        "connect_args": {
+            "sslmode": "prefer",
+            "connect_timeout": 10,
+            "application_name": "quiz_bot_app"
+        }
+    })
+
 # Create engine and session
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
