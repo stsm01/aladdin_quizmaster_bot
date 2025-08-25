@@ -65,6 +65,10 @@ async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     
     user = message.from_user
+    if not user or not user.id:
+        await message.answer("❌ Ошибка получения данных пользователя")
+        return
+        
     telegram_id = user.id
     
     # Check if user exists
@@ -88,6 +92,10 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.message(QuizStates.waiting_for_name)
 async def process_name(message: Message, state: FSMContext):
     """Process user's full name"""
+    if not message.text:
+        await message.answer("❌ Пожалуйста, введите текст")
+        return
+        
     full_name = message.text.strip()
     
     # Simple validation for first name and last name
@@ -98,6 +106,11 @@ async def process_name(message: Message, state: FSMContext):
     
     first_name = name_parts[0]
     last_name = " ".join(name_parts[1:])
+    
+    # Check if user exists
+    if not message.from_user or not message.from_user.id:
+        await message.answer("❌ Ошибка получения данных пользователя")
+        return
     
     # Register user
     result = await api_request("POST", "/public/users/register", {
@@ -312,6 +325,10 @@ async def main_menu(callback: CallbackQuery, state: FSMContext):
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     """Handle /stats command"""
+    if not message.from_user or not message.from_user.id:
+        await message.answer("❌ Ошибка получения данных пользователя")
+        return
+        
     user_stats = await api_request("GET", f"/public/users/{message.from_user.id}/stats")
     
     if user_stats:
