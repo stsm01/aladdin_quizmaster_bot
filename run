@@ -1,0 +1,17 @@
+#!/bin/bash
+# Deployment run script for Quiz Bot API
+# This script starts the FastAPI server for deployment
+
+echo "🚀 Starting Quiz Bot API for deployment..."
+
+# Try multiple approaches to ensure deployment works
+if command -v python &> /dev/null; then
+    echo "Using python to start deployment script..."
+    python run_deploy.py
+elif command -v uvicorn &> /dev/null; then
+    echo "Using uvicorn directly..."
+    uvicorn app.api.main:app --host 0.0.0.0 --port 5000
+else
+    echo "Error: Neither python nor uvicorn found"
+    exit 1
+fi
