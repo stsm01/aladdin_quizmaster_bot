@@ -215,7 +215,7 @@ class QuizService:
         if not option or option.question_id != question_id:
             return {"success": False, "error": "Invalid answer option"}
         
-        # Record answer
+        # Record answer (this updates correct_count automatically)
         storage.add_user_answer(
             session_id=session.id,
             user_telegram_id=session.user_telegram_id,
@@ -224,17 +224,21 @@ class QuizService:
             is_correct=option.is_correct
         )
         
+        # Get updated session data after recording answer
+        updated_session = storage.get_quiz_session(session_id)
+        
         # Move to next question
-        storage.update_quiz_session(session_id, current_question_index=session.current_question_index + 1)
+        new_question_index = session.current_question_index + 1
+        storage.update_quiz_session(session_id, current_question_index=new_question_index)
         
         return {
             "success": True,
             "is_correct": option.is_correct,
             "comment": option.comment,
             "progress": {
-                "current": session.current_question_index,
+                "current": new_question_index,  # Number of completed questions
                 "total": session.total_count,
-                "correct": session.correct_count
+                "correct": updated_session.correct_count  # Updated count after answer
             }
         }
     
