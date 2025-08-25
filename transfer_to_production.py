@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 # Настройки баз данных
 DEV_DATABASE_URL = os.getenv("DATABASE_URL")  # Development база
-PROD_DATABASE_URL = os.getenv("PROD_DATABASE_URL")  # Production база
+PROD_DATABASE_URL = "postgresql://neondb_owner:npg_9BH3JEMRwQna@ep-bitter-lake-a69kivks.us-west-2.aws.neon.tech/neondb?sslmode=require"  # Production база
 
 def connect_to_db(database_url, db_name):
     """Подключение к базе данных"""
