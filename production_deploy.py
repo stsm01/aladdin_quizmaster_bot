@@ -45,16 +45,44 @@ async def start_bot_with_retry():
             
             # Import here to avoid issues during module loading
             from app.core.config import settings
-            from app.bot.bot import main as bot_main
             
             # Check token
             if not settings.bot_token or settings.bot_token == "your_bot_token_here":
                 logger.error("❌ Bot token not configured")
                 return
             
-            # Start bot
-            await bot_main()
-            bot_healthy = True
+            # Create fresh bot instance for each attempt
+            from aiogram import Bot, Dispatcher
+            from aiogram.client.default import DefaultBotProperties
+            from aiogram.enums import ParseMode
+            from app.bot.handlers import register_handlers
+            from app.bot.storage import PostgreSQLStorage
+            
+            # Initialize bot and dispatcher with persistent storage
+            bot = Bot(
+                token=settings.bot_token,
+                default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+            )
+            
+            # Initialize fresh dispatcher and storage
+            storage = PostgreSQLStorage()
+            dp = Dispatcher(storage=storage)
+            
+            # Register handlers to the fresh dispatcher
+            register_handlers(dp)
+            
+            logger.info("🤖 Starting fresh bot instance...")
+            
+            try:
+                # Start polling with skip_updates to avoid conflicts
+                await dp.start_polling(bot, skip_updates=True)
+                bot_healthy = True
+            finally:
+                try:
+                    await bot.session.close()
+                    await storage.close()
+                except Exception as cleanup_e:
+                    logger.warning(f"Cleanup error: {cleanup_e}")
             
         except asyncio.CancelledError:
             logger.info("🤖 Bot task cancelled")

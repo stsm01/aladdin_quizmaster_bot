@@ -44,12 +44,17 @@ async def main():
     
     try:
         # Start polling
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, skip_updates=True)
     except Exception as e:
         logger.error(f"Error starting bot: {e}")
+        raise  # Re-raise to allow retry logic to work
     finally:
-        await bot.session.close()
-        await storage.close()
+        try:
+            await bot.session.close()
+            await storage.close()
+        except Exception as e:
+            logger.warning(f"Error during cleanup: {e}")
+            pass
 
 if __name__ == "__main__":
     asyncio.run(main())
