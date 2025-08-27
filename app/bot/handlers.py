@@ -455,18 +455,35 @@ async def handle_in_quiz_message(message: Message, state: FSMContext):
         await message.answer("❌ Ошибка восстановления теста. Начните новый тест.")
         await state.clear()
 
-# Handle unknown messages
-@router.message()
-async def unknown_message(message: Message, state: FSMContext):
-    """Handle unknown messages"""
+# Handle text messages that are NOT in name input state  
+@router.message(F.text, ~F.text.startswith("/"))
+async def handle_unexpected_text(message: Message, state: FSMContext):
+    """Handle text messages when NOT waiting for name input - prevent DB writes"""
+    if not message.text or not message.from_user:
+        return
+        
     current_state = await state.get_state()
     
-    if current_state == QuizStates.waiting_for_name:
-        # In name input state, treat as name
+    # Only allow text input when waiting for name
+    if current_state == QuizStates.waiting_for_name.state:
+        # This is the name input, pass to process_name handler
         await process_name(message, state)
-    else:
-        # Unknown command
+        return
+    
+    # Log attempt but don't write to database
+    logger.warning(f"User {message.from_user.id} sent text '{message.text[:50]}...' in state {current_state}")
+    
+    # Send rejection message with appropriate response based on current state
+    if current_state == QuizStates.in_quiz.state:
         await message.answer(
-            "❓ Не понял команду. Используйте кнопки меню или команду /help для справки.",
+            "❌ Во время теста используйте только кнопки для ответов.\n"
+            "📝 Выберите вариант ответа из предложенных кнопок.",
+            reply_markup=None
+        )
+    else:
+        await message.answer(
+            "❌ Неожиданный ввод текста!\n"
+            "🔘 Используйте кнопки меню для навигации.\n"
+            "ℹ️ Ввод текста разрешен только при регистрации имени.",
             reply_markup=get_main_menu_keyboard()
         )
