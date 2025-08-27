@@ -9,6 +9,7 @@ from aiogram.enums import ParseMode
 
 from ..core.config import settings
 from .handlers import register_handlers
+from .storage import PostgreSQLStorage
 
 # Configure logging
 logging.basicConfig(
@@ -26,13 +27,15 @@ async def main():
         logger.error("Bot token is not configured. Please set BOT_TOKEN environment variable.")
         return
     
-    # Initialize bot and dispatcher
+    # Initialize bot and dispatcher with persistent storage
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     
-    dp = Dispatcher()
+    # Initialize persistent storage
+    storage = PostgreSQLStorage()
+    dp = Dispatcher(storage=storage)
     
     # Register handlers
     register_handlers(dp)
@@ -46,6 +49,7 @@ async def main():
         logger.error(f"Error starting bot: {e}")
     finally:
         await bot.session.close()
+        await storage.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

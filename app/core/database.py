@@ -121,6 +121,14 @@ class UserAnswer(Base):
     session = relationship("QuizSession", back_populates="answers")
     user = relationship("User", back_populates="answers")
 
+class UserState(Base):
+    __tablename__ = "user_states"
+    
+    telegram_id = Column(Integer, primary_key=True, index=True)
+    state = Column(String, nullable=True)  # aiogram state name
+    data = Column(Text, nullable=True)  # JSON string with state data
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
 def get_db() -> Session:
     """Get database session"""
     db = SessionLocal()
