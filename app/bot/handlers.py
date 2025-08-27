@@ -399,6 +399,62 @@ async def cmd_help(message: Message):
     """
     await message.answer(help_text)
 
+# Handle messages when user is in quiz
+@router.message(QuizStates.in_quiz)
+async def handle_in_quiz_message(message: Message, state: FSMContext):
+    """Handle messages when user is in quiz state - restore current question"""
+    # Get saved session data
+    data = await state.get_data()
+    session_id = data.get("session_id")
+    
+    if not session_id:
+        await message.answer("❌ Сессия не найдена. Начните новый тест.")
+        await state.clear()
+        return
+    
+    try:
+        # Get current question from the session
+        question_data = await api_request("GET", f"/public/sessions/{session_id}/next")
+        
+        if not question_data:
+            # Quiz might be finished, redirect to results
+            finish_result = await api_request("POST", f"/public/sessions/{session_id}/finish")
+            
+            if finish_result:
+                result_text = f"🎉 Тест завершён!\n"
+                result_text += f"Результат: {finish_result['correct_count']}/{finish_result['total_count']} ({finish_result['score_percent']}%)"
+                
+                await message.answer(
+                    result_text,
+                    reply_markup=get_main_menu_keyboard()
+                )
+            else:
+                await message.answer("❌ Ошибка при завершении теста")
+                
+            await state.clear()
+            return
+        
+        # Show current question
+        question_text = f"📝 <b>Продолжаем тест...</b>\n\n"
+        question_text += f"❓ <b>{question_data['title']}</b>\n\n"
+        question_text += f"{question_data['text']}\n\n"
+        
+        # Add answer options to the question text
+        for i, option in enumerate(question_data['options']):
+            question_text += f"<b>{chr(65 + i)}.</b> {option['text']}\n"
+        
+        question_text += f"\n📊 Вопрос {question_data['current']} из {question_data['total']}"
+        
+        # Create keyboard with answer options
+        keyboard = get_quiz_keyboard(question_data['options'])
+        
+        await message.answer(question_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error restoring quiz state: {e}")
+        await message.answer("❌ Ошибка восстановления теста. Начните новый тест.")
+        await state.clear()
+
 # Handle unknown messages
 @router.message()
 async def unknown_message(message: Message, state: FSMContext):
