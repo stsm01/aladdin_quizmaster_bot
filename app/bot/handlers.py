@@ -25,32 +25,36 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 # API base URL
-API_BASE = f"http://localhost:{settings.api_port}"
+API_BASE = f"http://127.0.0.1:{settings.api_port}"
 
 async def api_request(method: str, url: str, data: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
     """Make API request"""
     try:
         async with aiohttp.ClientSession() as session:
             if method == "GET":
-                async with session.get(f"{API_BASE}{url}") as response:
+                full_url = f"{API_BASE}{url}"
+                async with session.get(full_url) as response:
                     if response.status == 200:
                         return await response.json()
                     elif response.status == 404:
                         return None
                     else:
-                        logger.error(f"API request failed: {response.status}")
+                        body = await response.text()
+                        logger.error(f"API GET {full_url} failed: {response.status} body={body[:200]}")
                         return None
             elif method == "POST":
                 headers = {"Content-Type": "application/json"}
+                full_url = f"{API_BASE}{url}"
                 async with session.post(
-                    f"{API_BASE}{url}", 
+                    full_url, 
                     json=data, 
                     headers=headers
                 ) as response:
                     if response.status in [200, 201]:
                         return await response.json()
                     else:
-                        logger.error(f"API request failed: {response.status}")
+                        body = await response.text()
+                        logger.error(f"API POST {full_url} failed: {response.status} body={body[:200]} data={data}")
                         return None
     except Exception as e:
         logger.error(f"API request error: {e}")

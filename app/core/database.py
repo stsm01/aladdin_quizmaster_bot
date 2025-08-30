@@ -7,6 +7,10 @@ from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env early
+load_dotenv()
 
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL")

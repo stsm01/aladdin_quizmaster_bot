@@ -2,9 +2,12 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+import logging
 import uvicorn
 
 from .routers import admin, public
+from .deps import AdminAuth
 
 # Create FastAPI app
 app = FastAPI(
@@ -22,8 +25,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Simple access log middleware
+logger = logging.getLogger("api.access")
+
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        method = request.method
+        path = request.url.path
+        response = await call_next(request)
+        try:
+            logger.info(f"{method} {path} -> {response.status_code}")
+        except Exception:
+            pass
+        return response
+
+app.add_middleware(AccessLogMiddleware)
+
 # Include routers
-app.include_router(admin.router, prefix="/admin", tags=["admin"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"], dependencies=[AdminAuth])
 app.include_router(public.router, prefix="/public", tags=["public"])
 
 @app.get("/")
