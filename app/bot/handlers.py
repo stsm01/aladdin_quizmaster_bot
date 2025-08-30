@@ -253,26 +253,37 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Go to next question"""
+    logger.info(f"🔄 next_question handler called by user {callback.from_user.id}")
+    
     try:
         await callback.answer()
+        logger.info(f"✅ Callback answered successfully")
     except Exception as e:
-        logger.error(f"Failed to answer callback: {e}")
+        logger.error(f"❌ Failed to answer callback: {e}")
     
     data = await state.get_data()
     session_id = data.get("session_id")
+    logger.info(f"📊 State data: session_id={session_id}")
     
     if not session_id:
+        logger.error(f"❌ No session_id found in state")
         await callback.message.edit_text(TEXTS["session_error"])
         return
     
+    logger.info(f"🚀 Calling send_next_question with session_id={session_id}")
     await send_next_question(callback.message, session_id, state)
 
 async def send_next_question(message: Message, session_id: str, state: FSMContext):
     """Send next question to user"""
+    logger.info(f"📤 send_next_question called with session_id={session_id}")
+    
     # Get next question
+    logger.info(f"🔍 Requesting next question from API...")
     question_data = await api_request("GET", f"/public/sessions/{session_id}/next")
+    logger.info(f"📥 API response: {question_data is not None}")
     
     if not question_data:
+        logger.info(f"🏁 No more questions, finishing quiz...")
         # No more questions, finish quiz
         finish_result = await api_request("POST", f"/public/sessions/{session_id}/finish")
         
@@ -280,12 +291,14 @@ async def send_next_question(message: Message, session_id: str, state: FSMContex
             result_text = f"🎉 Тест завершён!\n"
             result_text += f"Результат: {finish_result['correct_count']}/{finish_result['total_count']} ({finish_result['score_percent']}%)"
             
+            logger.info(f"✅ Quiz finished, showing results")
             await message.edit_text(
                 result_text,
                 reply_markup=get_main_menu_keyboard()
             )
             await state.clear()
         else:
+            logger.error(f"❌ Failed to finish quiz")
             await message.edit_text(TEXTS["finish_error"])
         return
     
@@ -485,3 +498,13 @@ async def handle_unexpected_text(message: Message, state: FSMContext):
             "🔘 Используйте кнопки меню для управления ботом",
             reply_markup=get_main_menu_keyboard()
         )
+
+# Debug handler for all unhandled callbacks
+@router.callback_query()
+async def debug_callback_handler(callback: CallbackQuery):
+    """Debug handler to catch all unhandled callbacks"""
+    logger.warning(f"🚨 Unhandled callback: '{callback.data}' from user {callback.from_user.id}")
+    try:
+        await callback.answer("Callback обработан")
+    except Exception as e:
+        logger.error(f"Failed to answer debug callback: {e}")
