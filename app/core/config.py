@@ -24,6 +24,11 @@ class Settings(BaseModel):
     max_questions_per_quiz: int = 20
     question_timeout_seconds: int = 300  # 5 minutes per question
     
+    # Webhook configuration
+    webhook_enabled: bool = os.getenv("BOT_WEBHOOK_ENABLED", "false").lower() in ("1", "true", "yes")
+    webhook_url: str = os.getenv("WEBHOOK_URL", "").strip()
+    webhook_path_prefix: str = os.getenv("WEBHOOK_PATH_PREFIX", "/webhook")
+    
     class Config:
         case_sensitive = False
 

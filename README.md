@@ -73,6 +73,16 @@ python3 scripts/import_from_prod_dump.py --file data/prod_transfer_20250825_1912
 
 API по умолчанию на `http://localhost:5000` (`/docs` для Swagger UI).
 
+### Режим вебхука (для прод):
+- Установите переменные окружения:
+```
+BOT_WEBHOOK_ENABLED=true
+WEBHOOK_URL=https://<ваш-домен>/webhook
+WEBHOOK_PATH_PREFIX=/webhook
+```
+- Настройте у Telegram: `https://api.telegram.org/bot<token>/setWebhook?url=<WEBHOOK_URL>`
+- В dev по умолчанию вебхук выключен (используется polling).
+
 ### Особенности и инварианты
 - Ровно один правильный ответ на вопрос (валидация при импорте/логике)
 - FSM состояния сохраняются в таблицу `user_states`

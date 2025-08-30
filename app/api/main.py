@@ -1,6 +1,6 @@
 """FastAPI application main module"""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
@@ -8,6 +8,11 @@ import uvicorn
 
 from .routers import admin, public
 from .deps import AdminAuth
+from ..core.config import settings
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import Update
 
 # Create FastAPI app
 app = FastAPI(
@@ -44,6 +49,23 @@ app.add_middleware(AccessLogMiddleware)
 # Include routers
 app.include_router(admin.router, prefix="/admin", tags=["admin"], dependencies=[AdminAuth])
 app.include_router(public.router, prefix="/public", tags=["public"])
+
+# Optional: webhook for Telegram bot (prod)
+if settings.webhook_enabled:
+    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp = Dispatcher()
+    from ..bot.handlers import register_handlers
+    register_handlers(dp)
+
+    @app.post(f"{settings.webhook_path_prefix}")
+    async def telegram_webhook(request: Request):
+        try:
+            data = await request.json()
+            update = Update.model_validate(data)
+            await dp.feed_update(bot, update)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
 @app.get("/")
 async def root():
