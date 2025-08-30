@@ -58,7 +58,9 @@ async def api_request(method: str, url: str, data: Optional[Dict] = None) -> Opt
 
 def register_handlers(dp):
     """Register all handlers"""
+    logger.info("🔧 Registering bot handlers...")
     dp.include_router(router)
+    logger.info("✅ Bot handlers registered successfully")
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
@@ -499,12 +501,12 @@ async def handle_unexpected_text(message: Message, state: FSMContext):
             reply_markup=get_main_menu_keyboard()
         )
 
-# Debug handler for all unhandled callbacks
+# This handler must be LAST to catch unhandled callbacks
 @router.callback_query()
 async def debug_callback_handler(callback: CallbackQuery):
-    """Debug handler to catch all unhandled callbacks"""
-    logger.warning(f"🚨 Unhandled callback: '{callback.data}' from user {callback.from_user.id}")
+    """Debug handler to catch all unhandled callbacks - MUST BE LAST"""
+    logger.warning(f"🚨 UNHANDLED CALLBACK: data='{callback.data}' user={callback.from_user.id}")
     try:
-        await callback.answer("Callback обработан")
+        await callback.answer("DEBUG: Callback получен")
     except Exception as e:
-        logger.error(f"Failed to answer debug callback: {e}")
+        logger.error(f"Debug callback answer failed: {e}")
