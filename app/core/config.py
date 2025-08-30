@@ -11,7 +11,7 @@ class Settings(BaseModel):
     """Application settings"""
     
     # Bot configuration
-    bot_token: str = os.getenv("BOT_TOKEN", "your_bot_token_here")
+    bot_token: str = os.getenv("BOT_TOKEN", "your_bot_token_here").strip()
     
     # API configuration
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
